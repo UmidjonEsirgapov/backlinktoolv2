@@ -12,9 +12,16 @@ export async function GET(req: NextRequest) {
   const uzOnly = searchParams.get('uz') === '1'
   const siteId = searchParams.get('siteId')
 
+  const saleFilter =
+    status === 'SALE_OR_EMPTY'
+      ? { saleStatus: { in: ['FOR_SALE', 'AVAILABLE'] as const } }
+      : status
+        ? { saleStatus: status }
+        : {}
+
   const where = {
     ...(uzOnly ? { isUz: true } : {}),
-    ...(status ? { saleStatus: status } : {}),
+    ...saleFilter,
     ...(search ? { domain: { contains: search } } : {}),
     ...(siteId
       ? { siteExternalDomains: { some: { siteId } } }

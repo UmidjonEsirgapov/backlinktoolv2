@@ -20,7 +20,7 @@ export default function Dashboard() {
   const [domains, setDomains] = useState<{ domains: unknown[]; total: number }>({ domains: [], total: 0 })
   const [sitesPage, setSitesPage] = useState(1)
   const [domainsPage, setDomainsPage] = useState(1)
-  const [domainFilters, setDomainFilters] = useState({ q: '', status: 'FOR_SALE', uz: true })
+  const [domainFilters, setDomainFilters] = useState({ q: '', status: 'SALE_OR_EMPTY', uz: true })
   const [importOpen, setImportOpen] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
   const [notification, setNotification] = useState<string | null>(null)

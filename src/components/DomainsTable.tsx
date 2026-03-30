@@ -74,8 +74,9 @@ export function DomainsTable({
           className="w-44"
         >
           <option value="">Barcha statuslar</option>
-          <option value="FOR_SALE">Sotuvda</option>
-          <option value="AVAILABLE">Bo'sh (ro'yxatdan o'tmagan)</option>
+          <option value="SALE_OR_EMPTY">Sotuvda yoki bo'sh (karta bilan mos)</option>
+          <option value="FOR_SALE">Faqat sotuvda</option>
+          <option value="AVAILABLE">Faqat bo'sh (ro'yxatdan o'tmagan)</option>
           <option value="NOT_FOR_SALE">Sotuvda emas</option>
           <option value="UNKNOWN">Noma'lum</option>
           <option value="CHECKING">Tekshirilmoqda</option>

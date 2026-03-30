@@ -293,11 +293,10 @@ export async function crawlSite(siteId: string, domain: string, log: Logger): Pr
       }
     })
 
-    // Add new links to BFS queue (deduped)
+    // URLs are already marked in visitedNormalized when queued into nextLinks; do not skip here
+    // or the BFS queue never grows beyond the seed (only home page gets crawled).
     for (const l of nextLinks) {
-      if (!visitedNormalized.has(l.normalizedUrl)) {
-        bfsQueue.push(l)
-      }
+      bfsQueue.push(l)
     }
 
     await prisma.site.update({
