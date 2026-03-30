@@ -15,16 +15,18 @@ services:
       NEXT_TELEMETRY_DISABLED: "1"
     volumes:
       - db_data:/data
-    command: >
-      /bin/sh -c "
-        echo '[web] Prisma migrate...';
-        node /app/node_modules/prisma/build/index.js migrate deploy;
-        echo '[web] Starting Next.js...';
-        exec node server.js
-      "
+    # Exec-array: YAML `>` fold Coolify/docker-compose'da noto'g'ri bo'lishi mumkin; wget alpine'da yo'q bo'lishi mumkin
+    command:
+      - /bin/sh
+      - -c
+      - node /app/node_modules/prisma/build/index.js migrate deploy && exec node server.js
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/stats || exit 1"]
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/stats',{signal:AbortSignal.timeout(9000)}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
       interval: 15s
       timeout: 10s
       retries: 10
