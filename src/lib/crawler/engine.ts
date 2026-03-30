@@ -225,30 +225,20 @@ export async function crawlSite(siteId: string, domain: string, log: Logger): Pr
           const freq = externalDomainFreq.get(linkDomain) ?? 0
           externalDomainFreq.set(linkDomain, freq + 1)
 
-          // Upsert ExternalDomain
-          let extDomain = await prisma.externalDomain.findUnique({
+          // Upsert (parallel sahifalar bir vaqtda bir xil domenni yozganda find+create unique xato berardi)
+          const extDomain = await prisma.externalDomain.upsert({
             where: { domain: linkDomain },
+            create: { domain: linkDomain, isUz: isUzDomain(linkDomain) },
+            update: { isUz: isUzDomain(linkDomain) },
           })
-          if (!extDomain) {
-            extDomain = await prisma.externalDomain.create({
-              data: { domain: linkDomain, isUz: isUzDomain(linkDomain) },
-            })
-          }
 
-          // Upsert SiteExternalDomain junction
-          const existing = await prisma.siteExternalDomain.findUnique({
-            where: { siteId_externalDomainId: { siteId, externalDomainId: extDomain.id } },
+          await prisma.siteExternalDomain.upsert({
+            where: {
+              siteId_externalDomainId: { siteId, externalDomainId: extDomain.id },
+            },
+            create: { siteId, externalDomainId: extDomain.id, frequency: 1 },
+            update: { frequency: { increment: 1 } },
           })
-          if (existing) {
-            await prisma.siteExternalDomain.update({
-              where: { id: existing.id },
-              data: { frequency: existing.frequency + 1 },
-            })
-          } else {
-            await prisma.siteExternalDomain.create({
-              data: { siteId, externalDomainId: extDomain.id, frequency: 1 },
-            })
-          }
 
           // Save the actual link
           const isNofollow = link.rel.includes('nofollow')
