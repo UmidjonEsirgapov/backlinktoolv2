@@ -38,18 +38,18 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Next.js standalone output (includes its own node_modules subset)
+# Next.js standalone output
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-# public/ papkasini ko'chirish (bo'sh bo'lsa ham xato bermaydi)
+# public/ papkasi
 RUN mkdir -p ./public
 COPY --from=builder /app/public ./public
 
 # Worker compiled output
 COPY --from=builder /app/dist ./dist
 
-# Prisma schema + generated client + native engine binary
+# Prisma: schema + generated client + engine binary + CLI
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
@@ -70,6 +70,10 @@ COPY --from=builder /app/node_modules/css-what ./node_modules/css-what
 COPY --from=builder /app/node_modules/boolbase ./node_modules/boolbase
 COPY --from=builder /app/node_modules/entities ./node_modules/entities
 
+# Entrypoint script (migrations + app start)
+COPY scripts/docker-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Data directory (Docker volume mount bilan almashtiriladi)
 RUN mkdir -p /data && chown nextjs:nodejs /data
 
@@ -77,4 +81,6 @@ USER nextjs
 
 EXPOSE 3000
 
+# Entrypoint: avval migratsiya, so'ng asosiy buyruq
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["node", "server.js"]
