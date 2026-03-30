@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Sites ────────────────────────────────────────────────────────────────────
+
+model Site {
+  id           String  @id @default(cuid())
+  domain       String  @unique
+  // QUEUED | CRAWLING | PAUSED | DONE | ERROR | SKIPPED
+  status       String  @default("QUEUED")
+  pagesQueued  Int     @default(0)
+  pagesCrawled Int     @default(0)
+  pagesError   Int     @default(0)
+  externalLinksFound Int @default(0)
+  uzDomainsFound     Int @default(0)
+  errorMsg     String?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  pages               Page[]
+  logs                CrawlLog[]
+  siteExternalDomains SiteExternalDomain[]
+}
+
+// ─── Pages ─────────────────────────────────────────────────────────────────────
+
+model Page {
+  id            String   @id @default(cuid())
+  siteId        String
+  url           String
+  normalizedUrl String
+  // PENDING | CRAWLED | ERROR | SKIPPED
+  status        String   @default("PENDING")
+  depth         Int      @default(0)
+  statusCode    Int?
+  redirectTo    String?
+  crawledAt     DateTime?
+  errorMsg      String?
+  createdAt     DateTime @default(now())
+
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, normalizedUrl])
+  @@index([siteId, status])
+  @@index([siteId, depth])
+}
+
+// ─── External Domains ─────────────────────────────────────────────────────────
+
+model ExternalDomain {
+  id          String   @id @default(cuid())
+  domain      String   @unique
+  isUz        Boolean  @default(false)
+  // UNKNOWN | CHECKING | FOR_SALE | NOT_FOR_SALE | AVAILABLE | ERROR
+  saleStatus  String   @default("UNKNOWN")
+  // JSON string with detection evidence
+  evidence    String?
+  // JSON string with raw RDAP response
+  rdapRaw     String?
+  httpStatus  Int?
+  dnsResolved Boolean?
+  daScore     Int?
+  lastChecked DateTime?
+  checkError  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  siteExternalDomains SiteExternalDomain[]
+  links               DomainLink[]
+}
+
+// ─── Junction: which site found which external domain ─────────────────────────
+
+model SiteExternalDomain {
+  id               String @id @default(cuid())
+  siteId           String
+  externalDomainId String
+  frequency        Int    @default(1)
+  firstSeenAt      DateTime @default(now())
+
+  site           Site           @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  externalDomain ExternalDomain @relation(fields: [externalDomainId], references: [id])
+
+  @@unique([siteId, externalDomainId])
+  @@index([siteId])
+  @@index([externalDomainId])
+}
+
+// ─── Specific links pointing to that external domain ──────────────────────────
+
+model DomainLink {
+  id               String @id @default(cuid())
+  externalDomainId String
+  sourcePageUrl    String
+  targetUrl        String
+  anchor           String?
+  // e.g. "nofollow,sponsored"
+  rel              String?
+  // EXTERNAL | MAILTO | TEL | ASSET | OTHER
+  linkType         String @default("EXTERNAL")
+  createdAt        DateTime @default(now())
+
+  externalDomain ExternalDomain @relation(fields: [externalDomainId], references: [id], onDelete: Cascade)
+
+  @@index([externalDomainId])
+}
+
+// ─── Crawl Logs ───────────────────────────────────────────────────────────────
+
+model CrawlLog {
+  id        String   @id @default(cuid())
+  siteId    String?
+  // DEBUG | INFO | WARN | ERROR
+  level     String   @default("INFO")
+  message   String
+  // JSON string with extra metadata
+  meta      String?
+  createdAt DateTime @default(now())
+
+  site Site? @relation(fields: [siteId], references: [id], onDelete: SetNull)
+
+  @@index([siteId])
+  @@index([level])
+  @@index([createdAt])
+}
+
+// ─── Job Queue (DB-backed, no Redis needed) ───────────────────────────────────
+
+model JobQueue {
+  id          String   @id @default(cuid())
+  // CRAWL_SITE | CHECK_DOMAIN
+  type        String
+  // JSON string payload
+  payload     String
+  // PENDING | RUNNING | DONE | FAILED | CANCELLED
+  status      String   @default("PENDING")
+  priority    Int      @default(0)
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(3)
+  errorMsg    String?
+  // worker instance key to detect stale RUNNING jobs
+  workerKey   String?
+  scheduledAt DateTime @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status, scheduledAt])
+  @@index([type, status])
+}
+
+// ─── Application Settings (pause/resume, global config) ──────────────────────
+
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

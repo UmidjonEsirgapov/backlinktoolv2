@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # ── Database migrations (runs once at startup) ─────────────────────────────
+  migrate:
+    build: .
+    environment:
+      DATABASE_URL: file:/data/backlink.db
+      NODE_ENV: production
+    volumes:
+      - db_data:/data
+    command: ["npx", "prisma", "migrate", "deploy"]
+    restart: "no"
+
+  # ── Web application ────────────────────────────────────────────────────────
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: file:/data/backlink.db
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      # Optionally override crawler/worker defaults via env:
+      # CRAWLER_MAX_PAGES_PER_SITE: "500"
+      # OPENPAGERANK_API_KEY: ""
+    volumes:
+      - db_data:/data
+    command: ["node", "server.js"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/stats"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Background worker ──────────────────────────────────────────────────────
+  worker:
+    build: .
+    environment:
+      DATABASE_URL: file:/data/backlink.db
+      NODE_ENV: production
+      WORKER_CRAWL_CONCURRENCY: "3"
+      WORKER_DOMAIN_CHECK_CONCURRENCY: "10"
+      WORKER_POLL_INTERVAL_MS: "2000"
+      CRAWLER_MAX_DEPTH: "5"
+      CRAWLER_MAX_PAGES_PER_SITE: "500"
+      CRAWLER_PAGE_CONCURRENCY: "5"
+      CRAWLER_REQUEST_TIMEOUT_MS: "15000"
+      CRAWLER_RATE_LIMIT_MS: "500"
+      # OPENPAGERANK_API_KEY: ""
+    volumes:
+      - db_data:/data
+    command: ["node", "dist/worker/index.js"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  db_data:
+    driver: local

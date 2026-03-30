@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+
+# Worker build output
+dist/
+
+# Database files
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Environment variables (never commit real secrets)
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.cursor/
+*.swp
+*.swo
+
+# Prisma generated (regenerated on install)
+# node_modules/.prisma is excluded via node_modules above
+
+# Test coverage
+coverage/
