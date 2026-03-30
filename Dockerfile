@@ -14,16 +14,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Ensure public directory exists (Next.js requires it)
 RUN mkdir -p public
-
-# Generate Prisma client
 RUN npx prisma generate
-
-# Build Next.js (standalone output)
 RUN npm run build
-
-# Compile worker to JS
 RUN npx tsc -p tsconfig.worker.json
 
 # ─── Stage 3: Production runner ───────────────────────────────────────────────
@@ -34,28 +27,25 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Create non-root user
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Next.js standalone output
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-
-# public/ papkasi
 RUN mkdir -p ./public
 COPY --from=builder /app/public ./public
 
 # Worker compiled output
 COPY --from=builder /app/dist ./dist
 
-# Prisma: schema + generated client + engine binary + CLI
+# Prisma: schema + client + engine binary + CLI
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 
-# Worker runtime dependencies (not bundled in standalone)
+# Worker runtime dependencies
 COPY --from=builder /app/node_modules/undici ./node_modules/undici
 COPY --from=builder /app/node_modules/cheerio ./node_modules/cheerio
 COPY --from=builder /app/node_modules/tldts ./node_modules/tldts
@@ -70,17 +60,11 @@ COPY --from=builder /app/node_modules/css-what ./node_modules/css-what
 COPY --from=builder /app/node_modules/boolbase ./node_modules/boolbase
 COPY --from=builder /app/node_modules/entities ./node_modules/entities
 
-# Entrypoint script (migrations + app start)
-COPY scripts/docker-entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
-# Data directory (Docker volume mount bilan almashtiriladi)
 RUN mkdir -p /data && chown nextjs:nodejs /data
 
 USER nextjs
 
 EXPOSE 3000
 
-# Entrypoint: avval migratsiya, so'ng asosiy buyruq
-ENTRYPOINT ["/entrypoint.sh"]
+# Default CMD — overridden by docker-compose per service
 CMD ["node", "server.js"]

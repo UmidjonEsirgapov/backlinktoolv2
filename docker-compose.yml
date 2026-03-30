@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   # ── Web application ─────────────────────────────────────────────────────────
-  # Entrypoint: avval "prisma migrate deploy" ishlatadi, so'ng "node server.js"
+  # sh -c: avval prisma migrate, so'ng Next.js server
   web:
     build: .
     expose:
@@ -13,20 +13,25 @@ services:
       HOSTNAME: "0.0.0.0"
       PORT: "3000"
       NEXT_TELEMETRY_DISABLED: "1"
-      # OPENPAGERANK_API_KEY: ""
     volumes:
       - db_data:/data
-    command: ["node", "server.js"]
+    command: >
+      /bin/sh -c "
+        echo '[web] Prisma migrate...';
+        node /app/node_modules/prisma/build/index.js migrate deploy;
+        echo '[web] Starting Next.js...';
+        exec node server.js
+      "
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/stats"]
-      interval: 30s
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/stats || exit 1"]
+      interval: 15s
       timeout: 10s
-      retries: 5
-      start_period: 20s
+      retries: 10
+      start_period: 60s
 
   # ── Background worker ────────────────────────────────────────────────────────
-  # Entrypoint migration ham ishlatadi (idempotent — xavfsiz)
+  # Web healthy bo'lgandan keyin boshlanadi
   worker:
     build: .
     environment:
@@ -40,7 +45,6 @@ services:
       CRAWLER_PAGE_CONCURRENCY: "5"
       CRAWLER_REQUEST_TIMEOUT_MS: "15000"
       CRAWLER_RATE_LIMIT_MS: "500"
-      # OPENPAGERANK_API_KEY: ""
     volumes:
       - db_data:/data
     command: ["node", "dist/worker/index.js"]
