@@ -14,6 +14,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Ensure public directory exists (Next.js requires it)
+RUN mkdir -p public
+
 # Generate Prisma client
 RUN npx prisma generate
 
@@ -38,6 +41,9 @@ RUN adduser --system --uid 1001 nextjs
 # Next.js standalone output (includes its own node_modules subset)
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+
+# public/ papkasini ko'chirish (bo'sh bo'lsa ham xato bermaydi)
+RUN mkdir -p ./public
 COPY --from=builder /app/public ./public
 
 # Worker compiled output
@@ -64,13 +70,11 @@ COPY --from=builder /app/node_modules/css-what ./node_modules/css-what
 COPY --from=builder /app/node_modules/boolbase ./node_modules/boolbase
 COPY --from=builder /app/node_modules/entities ./node_modules/entities
 
-# Data directory (will be overridden by volume mount)
+# Data directory (Docker volume mount bilan almashtiriladi)
 RUN mkdir -p /data && chown nextjs:nodejs /data
 
 USER nextjs
 
 EXPOSE 3000
 
-# Default: start web server
-# Override CMD to run worker: node dist/worker/index.js
 CMD ["node", "server.js"]
