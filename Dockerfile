@@ -45,12 +45,16 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 
-# Worker runtime dependencies
+# Worker runtime dependencies (cheerio + dom/CSS stack: barcha top-level transitivlar)
 COPY --from=builder /app/node_modules/undici ./node_modules/undici
 COPY --from=builder /app/node_modules/cheerio ./node_modules/cheerio
+COPY --from=builder /app/node_modules/cheerio-select ./node_modules/cheerio-select
+COPY --from=builder /app/node_modules/domelementtype ./node_modules/domelementtype
 COPY --from=builder /app/node_modules/tldts ./node_modules/tldts
 COPY --from=builder /app/node_modules/robots-parser ./node_modules/robots-parser
 COPY --from=builder /app/node_modules/parse5 ./node_modules/parse5
+COPY --from=builder /app/node_modules/parse5-htmlparser2-tree-adapter ./node_modules/parse5-htmlparser2-tree-adapter
+COPY --from=builder /app/node_modules/parse5-parser-stream ./node_modules/parse5-parser-stream
 COPY --from=builder /app/node_modules/htmlparser2 ./node_modules/htmlparser2
 COPY --from=builder /app/node_modules/dom-serializer ./node_modules/dom-serializer
 COPY --from=builder /app/node_modules/domhandler ./node_modules/domhandler
@@ -58,7 +62,13 @@ COPY --from=builder /app/node_modules/domutils ./node_modules/domutils
 COPY --from=builder /app/node_modules/css-select ./node_modules/css-select
 COPY --from=builder /app/node_modules/css-what ./node_modules/css-what
 COPY --from=builder /app/node_modules/boolbase ./node_modules/boolbase
+COPY --from=builder /app/node_modules/nth-check ./node_modules/nth-check
 COPY --from=builder /app/node_modules/entities ./node_modules/entities
+COPY --from=builder /app/node_modules/encoding-sniffer ./node_modules/encoding-sniffer
+COPY --from=builder /app/node_modules/iconv-lite ./node_modules/iconv-lite
+COPY --from=builder /app/node_modules/safer-buffer ./node_modules/safer-buffer
+COPY --from=builder /app/node_modules/whatwg-encoding ./node_modules/whatwg-encoding
+COPY --from=builder /app/node_modules/whatwg-mimetype ./node_modules/whatwg-mimetype
 
 RUN mkdir -p /data && chown nextjs:nodejs /data
 
