@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
 
   const saleFilter =
     status === 'SALE_OR_EMPTY'
-      ? { saleStatus: { in: ['FOR_SALE', 'AVAILABLE'] as const } }
+      ? { saleStatus: { in: ['FOR_SALE', 'AVAILABLE'] } }
       : status
         ? { saleStatus: status }
         : {}
