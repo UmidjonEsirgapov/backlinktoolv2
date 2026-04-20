@@ -35,6 +35,19 @@ function ProgressBar({ current, total }: { current: number; total: number }) {
   )
 }
 
+function normalizeSiteDomainInput(raw: string): string | null {
+  const d = raw
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/\/.*$/, '')
+    .replace(/:\d+$/, '')
+    .replace(/^www\./, '')
+    .trim()
+  if (d.length < 3 || !d.includes('.')) return null
+  return d
+}
+
 export function SitesTable({
   sites,
   total,
@@ -42,6 +55,8 @@ export function SitesTable({
   limit,
   onPageChange,
   onRefresh,
+  onViewDomainsForSite,
+  onNotify,
 }: {
   sites: Site[]
   total: number
@@ -49,12 +64,18 @@ export function SitesTable({
   limit: number
   onPageChange: (p: number) => void
   onRefresh: () => void
+  onViewDomainsForSite?: (siteId: string) => void
+  onNotify?: (msg: string) => void
 }) {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [selectedSite, setSelectedSite] = useState<Site | null>(null)
   const [loading, setLoading] = useState<string | null>(null)
   const [siteLogs, setSiteLogs] = useState<Array<{ level: string; message: string; createdAt: string }>>([])
+  const [siteToDelete, setSiteToDelete] = useState<Site | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [singleDomainInput, setSingleDomainInput] = useState('')
+  const [singleAddLoading, setSingleAddLoading] = useState(false)
 
   const handleAction = useCallback(async (action: string, siteId: string) => {
     setLoading(siteId)
@@ -73,6 +94,52 @@ export function SitesTable({
     setSelectedSite(site)
     const logs = await fetch(`/api/sites/${site.id}/logs?limit=50`).then(r => r.json())
     setSiteLogs(logs)
+  }
+
+  const confirmDelete = async () => {
+    if (!siteToDelete) return
+    setDeleteLoading(true)
+    try {
+      const res = await fetch(`/api/sites/${siteToDelete.id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        onNotify?.(`Xatolik: ${(data as { error?: string }).error ?? res.status}`)
+        return
+      }
+      onNotify?.(`Sayt o'chirildi: ${siteToDelete.domain}`)
+      setSiteToDelete(null)
+      if (selectedSite?.id === siteToDelete.id) setSelectedSite(null)
+      onRefresh()
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
+
+  const handleSingleAdd = async () => {
+    const normalized = normalizeSiteDomainInput(singleDomainInput)
+    if (!normalized) {
+      onNotify?.('Noto\'g\'ri domen')
+      return
+    }
+    setSingleAddLoading(true)
+    try {
+      const res = await fetch('/api/sites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domains: [normalized] }),
+      })
+      const data = await res.json() as { created?: number; skipped?: number; error?: string }
+      if (!res.ok) {
+        onNotify?.(data.error ?? 'Xatolik')
+        return
+      }
+      if (data.created) onNotify?.(`✓ ${normalized} qo'shildi`)
+      else onNotify?.('Bu sayt allaqachon mavjud')
+      setSingleDomainInput('')
+      onRefresh()
+    } finally {
+      setSingleAddLoading(false)
+    }
   }
 
   const statusLabels: Record<string, string> = {
@@ -108,6 +175,18 @@ export function SitesTable({
             <option key={val} value={val}>{label}</option>
           ))}
         </Select>
+        <div className="flex items-center gap-1.5 border-l border-[#2a2d3e] pl-2 ml-1">
+          <Input
+            placeholder="Bitta sayt (masalan kun.uz)"
+            value={singleDomainInput}
+            onChange={e => setSingleDomainInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSingleAdd()}
+            className="w-52"
+          />
+          <Button size="sm" variant="primary" onClick={handleSingleAdd} disabled={singleAddLoading || !singleDomainInput.trim()}>
+            + Qo'shish
+          </Button>
+        </div>
         <span className="ml-auto text-xs text-slate-500">{total} ta sayt</span>
       </div>
 
@@ -148,7 +227,17 @@ export function SitesTable({
                 <td className="px-3 py-2.5 text-right tabular-nums">{site.externalLinksFound || '—'}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums text-emerald-400 font-medium">{site.uzDomainsFound || '—'}</td>
                 <td className="px-3 py-2.5">
-                  <div className="flex gap-1">
+                  <div className="flex flex-wrap gap-1">
+                    {onViewDomainsForSite && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => onViewDomainsForSite(site.id)}
+                        title="Bu saytning tashqi .uz domenlari"
+                      >
+                        .uz
+                      </Button>
+                    )}
                     {(site.status === 'QUEUED' || site.status === 'ERROR') && (
                       <Button size="sm" variant="primary" onClick={() => handleAction('start_one', site.id)} disabled={loading === site.id} title="Boshlash">▶</Button>
                     )}
@@ -161,6 +250,9 @@ export function SitesTable({
                     {site.status === 'DONE' && (
                       <Button size="sm" variant="ghost" onClick={() => handleAction('reset_site', site.id)} disabled={loading === site.id} title="Qayta crawl qilish">↺</Button>
                     )}
+                    <Button size="sm" variant="danger" onClick={() => setSiteToDelete(site)} disabled={loading === site.id} title="Saytni o'chirish">
+                      🗑
+                    </Button>
                   </div>
                 </td>
               </tr>
@@ -184,6 +276,22 @@ export function SitesTable({
           <Button size="sm" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>Keyingi →</Button>
         </div>
       )}
+
+      <Modal open={!!siteToDelete} onClose={() => !deleteLoading && setSiteToDelete(null)} title="Saytni o'chirish">
+        {siteToDelete && (
+          <div className="space-y-4 text-sm">
+            <p className="text-slate-300">
+              <span className="font-medium text-white">{siteToDelete.domain}</span> va uning crawl ma&apos;lumotlari butunlay o'chiriladi. Davom etasizmi?
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setSiteToDelete(null)} disabled={deleteLoading}>Bekor</Button>
+              <Button variant="danger" onClick={confirmDelete} disabled={deleteLoading}>
+                {deleteLoading ? 'O\'chirilmoqda…' : 'O\'chirish'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Batafsil modal */}
       <Modal open={!!selectedSite} onClose={() => setSelectedSite(null)} title={`Sayt: ${selectedSite?.domain}`}>

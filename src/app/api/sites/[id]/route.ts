@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { cancelSiteJobs } from '@/lib/worker/queue'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,6 +35,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+  const existing = await prisma.site.findUnique({ where: { id: params.id } })
+  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  await cancelSiteJobs(params.id)
   await prisma.site.delete({ where: { id: params.id } })
   return NextResponse.json({ ok: true })
 }

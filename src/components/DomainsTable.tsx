@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Badge, Button, Input, Select, Modal } from './ui'
 
 interface Domain {
@@ -34,11 +34,25 @@ export function DomainsTable({
   limit: number
   onPageChange: (p: number) => void
   onRefresh: () => void
-  filters: { q: string; status: string; uz: boolean }
-  onFiltersChange: (f: { q: string; status: string; uz: boolean }) => void
+  filters: { q: string; status: string; uz: boolean; siteId: string }
+  onFiltersChange: (f: { q: string; status: string; uz: boolean; siteId: string }) => void
 }) {
   const [selected, setSelected] = useState<Domain | null>(null)
   const [recheckLoading, setRecheckLoading] = useState<string | null>(null)
+  const [siteOptions, setSiteOptions] = useState<{ id: string; domain: string }[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/sites?page=1&limit=100')
+      .then(r => r.json())
+      .then((data: { sites: { id: string; domain: string }[] }) => {
+        if (!cancelled && Array.isArray(data.sites)) {
+          setSiteOptions(data.sites.map(s => ({ id: s.id, domain: s.domain })))
+        }
+      })
+      .catch(() => { /* silent */ })
+    return () => { cancelled = true }
+  }, [])
 
   const recheck = async (d: Domain) => {
     setRecheckLoading(d.id)
@@ -81,6 +95,17 @@ export function DomainsTable({
           <option value="UNKNOWN">Noma'lum</option>
           <option value="CHECKING">Tekshirilmoqda</option>
           <option value="ERROR">Xatolik</option>
+        </Select>
+        <Select
+          value={filters.siteId}
+          onChange={e => onFiltersChange({ ...filters, siteId: e.target.value })}
+          className="min-w-[10rem] max-w-[14rem]"
+          title="Faqat shu saytdan topilgan tashqi domenlar"
+        >
+          <option value="">Barcha saytlar</option>
+          {siteOptions.map(s => (
+            <option key={s.id} value={s.id}>{s.domain}</option>
+          ))}
         </Select>
         <label className="flex items-center gap-1.5 text-sm text-slate-400 cursor-pointer">
           <input
