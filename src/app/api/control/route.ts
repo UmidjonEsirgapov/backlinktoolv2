@@ -106,6 +106,7 @@ export async function POST(req: NextRequest) {
           externalLinksFound: 0,
           uzDomainsFound: 0,
           errorMsg: null,
+          crawlStoppedReason: null,
           startedAt: null,
           completedAt: null,
         },

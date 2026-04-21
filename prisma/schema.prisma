@@ -20,6 +20,8 @@ model Site {
   externalLinksFound Int @default(0)
   uzDomainsFound     Int @default(0)
   errorMsg     String?
+  // When status=DONE: EXHAUSTED (navbat tugadi) | PAGE_LIMIT (CRAWLER_MAX_PAGES_PER_SITE yetdi)
+  crawlStoppedReason String?
   startedAt    DateTime?
   completedAt  DateTime?
   createdAt    DateTime @default(now())

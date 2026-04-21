@@ -114,7 +114,13 @@ export async function crawlSite(siteId: string, domain: string, log: Logger): Pr
   // Seed DB with initial pages
   await prisma.site.update({
     where: { id: siteId },
-    data: { pagesQueued: bfsQueue.length, status: 'CRAWLING', startedAt: new Date() },
+    data: {
+      pagesQueued: bfsQueue.length,
+      status: 'CRAWLING',
+      startedAt: new Date(),
+      crawlStoppedReason: null,
+      completedAt: null,
+    },
   })
 
   let pagesCrawled = 0
@@ -297,17 +303,28 @@ export async function crawlSite(siteId: string, domain: string, log: Logger): Pr
 
   // ── Final update ───────────────────────────────────────────────────────────
   const uzDomains = [...externalDomainFreq.keys()].filter(isUzDomain)
+  const hitPageCap = pagesCrawled >= cfg.maxPages && bfsQueue.length > 0
+  const crawlStoppedReason = hitPageCap ? 'PAGE_LIMIT' : 'EXHAUSTED'
+
   await prisma.site.update({
     where: { id: siteId },
     data: {
       status: 'DONE',
       pagesCrawled,
       pagesError,
+      pagesQueued: bfsQueue.length + pagesCrawled,
       externalLinksFound: externalDomainFreq.size,
       uzDomainsFound: uzDomains.length,
       completedAt: new Date(),
+      crawlStoppedReason,
     },
   })
+
+  if (hitPageCap) {
+    await log.warn(
+      `${domain}: sahifa limiti (${cfg.maxPages}) tugadi; navbatda yana ${bfsQueue.length} URL qoldi (qayta crawl yoki CRAWLER_MAX_PAGES_PER_SITE)`,
+    )
+  }
 
   await log.info(
     `Completed ${domain}: ${pagesCrawled} pages, ${externalDomainFreq.size} external domains, ${uzDomains.length} .uz domains`,

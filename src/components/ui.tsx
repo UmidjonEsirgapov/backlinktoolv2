@@ -10,6 +10,10 @@ const badgeConfig: Record<string, { cls: string; uz: string }> = {
   CRAWLING:     { cls: 'bg-blue-900 text-blue-300 pulse', uz: 'Crawl qilinmoqda' },
   PAUSED:       { cls: 'bg-yellow-900 text-yellow-300', uz: 'To\'xtatilgan' },
   DONE:         { cls: 'bg-green-900 text-green-300',   uz: 'Tugadi' },
+  DONE_PAGE_LIMIT: {
+    cls: 'bg-amber-900 text-amber-200',
+    uz: 'Limit (to\'liq emas)',
+  },
   ERROR:        { cls: 'bg-red-900 text-red-300',       uz: 'Xatolik' },
   SKIPPED:      { cls: 'bg-slate-800 text-slate-500',   uz: 'O\'tkazildi' },
   FOR_SALE:     { cls: 'bg-emerald-900 text-emerald-300', uz: 'Sotuvda' },

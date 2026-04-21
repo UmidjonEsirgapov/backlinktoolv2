@@ -13,9 +13,15 @@ interface Site {
   externalLinksFound: number
   uzDomainsFound: number
   errorMsg: string | null
+  crawlStoppedReason: string | null
   startedAt: string | null
   completedAt: string | null
   createdAt: string
+}
+
+function siteStatusBadgeLabel(site: Site): string {
+  if (site.status === 'DONE' && site.crawlStoppedReason === 'PAGE_LIMIT') return 'DONE_PAGE_LIMIT'
+  return site.status
 }
 
 async function apiCall(url: string, opts?: RequestInit) {
@@ -215,7 +221,7 @@ export function SitesTable({
                   )}
                 </td>
                 <td className="px-3 py-2.5">
-                  <Badge label={site.status} />
+                  <Badge label={siteStatusBadgeLabel(site)} />
                 </td>
                 <td className="px-3 py-2.5 min-w-[140px]">
                   <ProgressBar current={site.pagesCrawled} total={Math.max(site.pagesQueued, 1)} />
@@ -223,6 +229,11 @@ export function SitesTable({
                     {site.pagesCrawled}/{site.pagesQueued} sahifa
                     {site.pagesError > 0 && <span className="text-red-400 ml-1">({site.pagesError} xato)</span>}
                   </p>
+                  {site.status === 'DONE' && site.crawlStoppedReason === 'PAGE_LIMIT' && (
+                    <p className="text-[11px] text-amber-400/90 mt-1 leading-snug">
+                      Sozlamadagi sahifa limiti tufayli to‘xtagan; barcha URL yig‘ilmagan.
+                    </p>
+                  )}
                 </td>
                 <td className="px-3 py-2.5 text-right tabular-nums">{site.externalLinksFound || '—'}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums text-emerald-400 font-medium">{site.uzDomainsFound || '—'}</td>
@@ -298,7 +309,7 @@ export function SitesTable({
         {selectedSite && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div><span className="text-slate-500">Status: </span><Badge label={selectedSite.status} /></div>
+              <div><span className="text-slate-500">Status: </span><Badge label={siteStatusBadgeLabel(selectedSite)} /></div>
               <div><span className="text-slate-500">Crawl qilingan: </span>{selectedSite.pagesCrawled} sahifa</div>
               <div><span className="text-slate-500">Tashqi domenlar: </span>{selectedSite.externalLinksFound}</div>
               <div><span className="text-slate-500">.uz domenlar: </span><span className="text-emerald-400">{selectedSite.uzDomainsFound}</span></div>
