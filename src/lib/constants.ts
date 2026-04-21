@@ -1,6 +1,9 @@
 export const CRAWLER_DEFAULTS = {
-  MAX_DEPTH: 5,
-  MAX_PAGES_PER_SITE: 500,
+  MAX_DEPTH: 20,
+  /** Prisma Int32 maksimumi — amalda “cheksiz” sayt crawl uchun */
+  MAX_PAGES_PER_SITE: 2_147_483_647,
+  /** Sitemapdan boshlang‘ich navbatga olinadigan URL limiti (xotira uchun) */
+  MAX_SITEMAP_SEED_URLS: 1_000_000,
   PAGE_CONCURRENCY: 5,
   REQUEST_TIMEOUT_MS: 15_000,
   RATE_LIMIT_MS: 500,

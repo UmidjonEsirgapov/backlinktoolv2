@@ -85,11 +85,9 @@ export async function crawlSite(siteId: string, domain: string, log: Logger): Pr
   }
 
   // ── Initialize BFS queue ───────────────────────────────────────────────────
-  // Seed with home page + sitemap URLs (limited)
-  const seedUrls = [
-    baseUrl,
-    ...sitemapDiscoveredUrls.slice(0, cfg.maxPages),
-  ]
+  // Seed with home page + sitemap URLs (sitemap alohida cheklanadi — juda katta XML xotira)
+  const sitemapSeedCap = Math.min(cfg.maxPages, CRAWLER_DEFAULTS.MAX_SITEMAP_SEED_URLS)
+  const seedUrls = [baseUrl, ...sitemapDiscoveredUrls.slice(0, sitemapSeedCap)]
 
   const visitedNormalized = new Set<string>()
   const bfsQueue: QueueItem[] = []
